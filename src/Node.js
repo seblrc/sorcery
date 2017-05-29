@@ -2,6 +2,7 @@ import { dirname, resolve } from 'path';
 import { readFile, readFileSync, Promise } from 'sander';
 import { decode } from 'sourcemap-codec';
 import getMap from './utils/getMap.js';
+var settle = require('promise-settle');
 
 export default function Node ({ file, content }) {
 	this.file = file ? resolve( file ) : null;
@@ -53,7 +54,15 @@ Node.prototype = {
 				});
 
 				const promises = this.sources.map( node => node.load( sourcesContentByPath, sourceMapByPath ) );
-				return Promise.all( promises );
+				 
+				return settle(promises)
+					.then(function (results) {
+						results.forEach(function (result) {
+							if (!result.isFulfilled()) {
+								console.log('WARNING: Cannot load original or map file. The mapping will not be converted. Correct mapping path or remove it:', result.reason());
+							}
+						})
+					});
 			});
 		});
 	},
